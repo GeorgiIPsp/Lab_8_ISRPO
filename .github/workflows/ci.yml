@@ -8,7 +8,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        configuration: [Debug]
+        configuration: [Debug, Release]
         include:
           - configuration: Debug
             artifact_name: debug-build
