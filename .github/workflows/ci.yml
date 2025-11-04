@@ -1,1 +1,52 @@
+name: Build and Test Multiple Configurations
 
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        include:
+          - configuration: Debug
+            artifact_name: debug-build
+          - configuration: Release
+            artifact_name: release-build
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.x'
+      
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build ${{ matrix.configuration }}
+      run: dotnet build --configuration ${{ matrix.configuration }} --no-restore --verbosity minimal
+      
+    - name: Run tests ${{ matrix.configuration }}
+      run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal
+      
+    - name: Publish ${{ matrix.configuration }}
+      run: dotnet publish --configuration ${{ matrix.configuration }} --output ./publish/${{ matrix.configuration }} --no-build
+      
+    - name: Create archive for ${{ matrix.configuration }}
+      run: |
+        cd ./publish/${{ matrix.configuration }}
+        zip -r ../${{ matrix.configuration }}-build-${{ github.sha }}.zip .
+        cd ../..
+      
+    - name: Upload ${{ matrix.configuration }} artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}-${{ github.sha }}
+        path: ./publish/${{ matrix.configuration }}-build-${{ github.sha }}.zip
+        retention-days: 30
